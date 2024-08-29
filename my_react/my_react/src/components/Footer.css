@@ -1,0 +1,95 @@
+.footer {
+  width: 100%;
+  height: 300px;
+  padding: 40px 0;
+  background-color: rgba(21, 21, 21, 0.918);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  position: relative;
+}
+
+.background-pattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 1;
+  z-index: -1; /* Перемещаем фоновый рисунок на задний план */
+}
+
+.footer-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-left: 100px; /* Устанавливаем отступы для логотипа */
+}
+
+.footer-logo img {
+  max-width: 200px;
+  margin-left: 90px;
+  height: auto;
+}
+
+.footer-logo span {
+  font-family: 'PT Sans';
+  margin-top: 30px;
+  font-size: 35px;
+  color: #fff;
+}
+
+.footer-logo span.renewal {
+  font-family: 'PD ExtraBold Italic';
+  font-weight: bold;
+}
+
+.footer-middle {
+  text-align: center;
+  margin-right: 90px;
+}
+
+.footer-middle span {
+  display: block;
+  font-size: 20px;
+  margin-bottom: 15px;
+}
+
+.social-networks {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.social-networks a {
+  margin: 0 10px;
+}
+
+.social-networks img {
+  width: 30px;
+  height: 30px;
+}
+
+.footer-right {
+  margin-right: 200px; /* Устанавливаем отступы для правой части */
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Центрируем значок и текст по горизонтали */
+}
+
+.footer-right span {
+  font-size: 20px;
+  margin-bottom: 10px; /* Добавляем отступ между текстом и значком */
+}
+
+.footer-right img {
+  width: 40px;
+  height: 40px;
+}
+.footer a {
+  color: white; /* Или любой другой цвет, который вам нужен */
+  text-decoration: none;
+}

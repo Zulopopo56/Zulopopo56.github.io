@@ -1,0 +1,35 @@
+.devices-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.devices-carousel {
+    overflow: hidden;
+    width: 100%;
+    position: relative;
+}
+
+.devices-carousel-items {
+    display: flex;
+    transition: transform 0.5s ease-in-out;
+}
+
+.devices-carousel-item {
+    min-width: 33.3333%;
+    padding: 0 10px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center; /* Центрирование по горизонтали */
+    align-items: center; /* Центрирование по вертикали */
+    padding-bottom:60px;
+}
+
+.devices-carousel-item img {
+    max-height: 100px; /* Задаем максимальную высоту изображений */
+    width: auto;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}

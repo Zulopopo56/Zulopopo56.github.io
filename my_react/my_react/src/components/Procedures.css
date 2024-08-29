@@ -1,0 +1,43 @@
+.procedure {
+    margin-top: 100px;
+    padding: 50px 20px;
+    background-color: var(--secondary-color);
+}
+
+.procedure h1 {
+    font-size: 36px;
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.procedure-sections {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.left-section, .right-section {
+    background-color: #fff;
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    flex: 1;
+}
+
+.left-section {
+    background-color: var(--primary-color);
+    color: var(--button-text-color);
+}
+
+.right-section h2 {
+    font-size: 24px;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.right-section p {
+    color: var(--text-color);
+    line-height: 1.6;
+}
