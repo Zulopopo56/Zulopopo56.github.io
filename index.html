@@ -1,21 +1,91 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>P2P без серверов</title>
+  <title>P2P Чат на PeerJS</title>
   <style>
-    textarea { width: 100%; height: 100px; }
-    #local-code { background: #f0f0f0; }
+    body { font-family: Arial; max-width: 600px; margin: 0 auto; padding: 20px; }
+    #chat { height: 300px; border: 1px solid #ccc; overflow-y: scroll; padding: 10px; }
+    #message { width: 70%; padding: 8px; }
   </style>
 </head>
 <body>
-  <h1>1. Ваш код:</h1>
-  <textarea id="local-code" readonly></textarea>
-  <button onclick="generateOffer()">Сгенерировать код</button>
+  <h1>P2P Чат (PeerJS)</h1>
+  <div id="chat"></div>
+  <input type="text" id="message" placeholder="Ваше сообщение">
+  <button onclick="sendMessage()">Отправить</button>
+  <hr>
+  <div>
+    <p>Ваш ID: <span id="your-id">...</span></p>
+    <input type="text" id="remote-id" placeholder="ID собеседника">
+    <button onclick="connectToPeer()">Подключиться</button>
+  </div>
 
-  <h1>2. Код собеседника:</h1>
-  <textarea id="remote-code"></textarea>
-  <button onclick="connect()">Подключиться</button>
+  <!-- Подключаем PeerJS -->
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <script>
+    let peer;
+    let activeConnection;
 
-  <script src="script.js"></script>
+    // 1. Инициализация PeerJS
+    function initPeer() {
+      peer = new Peer({
+        host: '0.peerjs.com', // Бесплатный публичный сервер
+        port: 443,
+        secure: true,
+        config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+      });
+
+      // 2. Получаем свой ID
+      peer.on('open', (id) => {
+        document.getElementById('your-id').textContent = id;
+      });
+
+      // 3. Обработка входящих подключений
+      peer.on('connection', (conn) => {
+        activeConnection = conn;
+        appendMessage('Система', 'Кто-то подключился к вам!');
+        
+        conn.on('data', (data) => {
+          appendMessage('Собеседник', data);
+        });
+      });
+    }
+
+    // 4. Подключение к другому участнику
+    function connectToPeer() {
+      const remoteId = document.getElementById('remote-id').value;
+      activeConnection = peer.connect(remoteId);
+      
+      activeConnection.on('open', () => {
+        appendMessage('Система', 'Соединение установлено!');
+      });
+      
+      activeConnection.on('data', (data) => {
+        appendMessage('Собеседник', data);
+      });
+    }
+
+    // 5. Отправка сообщений
+    function sendMessage() {
+      const message = document.getElementById('message').value;
+      if (!activeConnection || !message) return;
+      
+      activeConnection.send(message);
+      appendMessage('Вы', message);
+      document.getElementById('message').value = '';
+    }
+
+    // 6. Вывод сообщений в чат
+    function appendMessage(sender, text) {
+      const chat = document.getElementById('chat');
+      const messageElement = document.createElement('div');
+      messageElement.innerHTML = `<strong>${sender}:</strong> ${text}`;
+      chat.appendChild(messageElement);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    // Запускаем при загрузке страницы
+    initPeer();
+  </script>
 </body>
 </html>
