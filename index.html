@@ -37,10 +37,12 @@
     let peer;
     let activeConnection = null;
     let isConnected = false;
-
+    function generateShortId() {
+      return Math.random().toString(36).substr(2, 4);
+    }
     // Инициализация PeerJS
     function initPeer() {
-      peer = new Peer({
+      peer = new Peer(generateShortId(),{
         host: '0.peerjs.com',
         port: 443,
         secure: true,
