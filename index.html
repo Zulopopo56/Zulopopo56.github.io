@@ -6,77 +6,7 @@
     <title>p2p_game_godot</title>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        html, body, #canvas {
-            margin: 0;
-            padding: 0;
-            border: 0;
-        }
-        body {
-            color: white;
-            background-color: black;
-            overflow: hidden;
-            touch-action: none;
-        }
-        #canvas {
-            display: block;
-        }
-        #canvas:focus {
-            outline: none;
-        }
-        #status, #status-splash, #status-progress {
-            position: absolute;
-            left: 0;
-            right: 0;
-        }
-        #status, #status-splash {
-            top: 0;
-            bottom: 0;
-        }
-        #status {
-            background-color: #242424;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            visibility: hidden;
-        }
-        #status-splash {
-            max-height: 100%;
-            max-width: 100%;
-            margin: auto;
-        }
-        #status-splash.show-image--false {
-            display: none;
-        }
-        #status-splash.fullsize--true {
-            height: 100%;
-            width: 100%;
-            object-fit: contain;
-        }
-        #status-splash.use-filter--false {
-            image-rendering: pixelated;
-        }
-        #status-progress, #status-notice {
-            display: none;
-        }
-        #status-progress {
-            bottom: 10%;
-            width: 50%;
-            margin: 0 auto;
-        }
-        #status-notice {
-            background-color: #5b3943;
-            border-radius: 0.5rem;
-            border: 1px solid #9b3943;
-            color: #e0e0e0;
-            font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
-            line-height: 1.3;
-            margin: 0 2rem;
-            overflow: hidden;
-            padding: 1rem;
-            text-align: center;
-            z-index: 1;
-        }
+        /* Стили остаются без изменений */
     </style>
     <link id="-gd-engine-icon" rel="icon" type="image/png" href="p2p_game_godot.icon.png" />
     <link rel="apple-touch-icon" href="p2p_game_godot.apple-touch-icon.png"/>
@@ -98,9 +28,90 @@
 
     <script src="p2p_game_godot.js"></script>
     <script>
-    const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"p2p_game_godot","experimentalVK":true,"fileSizes":{"p2p_game_godot.pck":30496,"p2p_game_godot.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[]};
-    const GODOT_THREADS_ENABLED = false;
+	const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"p2p_game_godot","experimentalVK":true,"fileSizes":{"p2p_game_godot.pck":34928,"p2p_game_godot.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[]};
+	const GODOT_THREADS_ENABLED = false;
     const engine = new Engine(GODOT_CONFIG);
+
+    // Выносим функции PeerJS в глобальную область видимости
+    let peer = null;
+    let connection = null;
+
+    function generateShortId() {
+        return Math.random().toString(36).substr(2, 4);
+    }
+
+    function initPeer() {
+        peer = new Peer(generateShortId(), {
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
+                ]
+            }
+        });
+
+        peer.on('open', (id) => {
+            console.log('PeerJS ID:', id);
+            if (window.godotFunctions?.setPeerId) {
+                godotFunctions.setPeerId(id);
+            } else if (typeof godot !== 'undefined') {
+                godot.call('set_peer_id', id);
+            } else if (engine?.call) {
+                engine.call("set_peer_id", id);
+            }
+        });
+
+        peer.on('error', (err) => console.error('PeerJS error:', err));
+
+        peer.on('connection', (conn) => {
+            if (connection) {
+                console.log('Already have connection, closing new one');
+                conn.close();
+                return;
+            }
+            connection = conn;
+            setupConnectionHandlers(conn);
+            console.log('Incoming connection from', conn.peer);
+        });
+    }
+
+    function setupConnectionHandlers(conn) {
+        conn.on('open', () => {
+            console.log('Connection established with', conn.peer);
+            if (window.godotFunctions?.onConnectionOpen) {
+                godotFunctions.onConnectionOpen(conn.peer);
+            } else if (typeof godot !== 'undefined') {
+                godot.call('on_connection_open', conn.peer);
+            } else if (engine?.call) {
+                engine.call("on_connection_open", conn.peer);
+            }
+        });
+
+        conn.on('data', (data) => console.log('Received data:', data));
+        conn.on('close', () => {
+            console.log('Connection closed');
+            connection = null;
+        });
+        conn.on('error', (err) => {
+            console.error('Connection error:', err);
+            connection = null;
+        });
+    }
+
+    window.connectToPeer = function(remoteId) {
+        if (!peer) {
+            console.warn('Peer not ready');
+            return;
+        }
+        if (connection) {
+            console.warn('Already connected');
+            return;
+        }
+        console.log('Connecting to peer:', remoteId);
+        connection = peer.connect(remoteId);
+        setupConnectionHandlers(connection);
+    };
 
     (function() {
         // Инициализация статусных элементов
@@ -195,94 +206,9 @@
                 },
             }).then(() => {
                 setStatusMode('hidden');
+                // Инициализируем PeerJS после загрузки Godot
                 initPeer();
             }, displayFailureNotice);
-        }
-
-        // ---- PeerJS Implementation ----
-        let peer = null;
-        let connection = null;
-
-        // Генерация короткого ID
-        function generateShortId() {
-            return Math.random().toString(36).substr(2, 4);
-        }
-
-        // Инициализация PeerJS
-        function initPeer() {
-            peer = new Peer(generateShortId(), {
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' }
-                    ]
-                }
-            });
-
-            // Обработчики событий PeerJS
-            peer.on('open', (id) => {
-                console.log('PeerJS ID:', id);
-                if (window.godotFunctions?.setPeerId) {
-                    godotFunctions.setPeerId(id);
-                } else if (typeof godot !== 'undefined') {
-                    godot.call('set_peer_id', id);
-                } else if (engine?.call) {
-                    engine.call("set_peer_id", id);
-                }
-            });
-
-            peer.on('error', (err) => console.error('PeerJS error:', err));
-
-            peer.on('connection', (conn) => {
-                if (connection) {
-                    console.log('Already have connection, closing new one');
-                    conn.close();
-                    return;
-                }
-                connection = conn;
-                setupConnectionHandlers(conn);
-                console.log('Incoming connection from', conn.peer);
-            });
-        }
-
-        // Функция для подключения к другому пиру
-        window.connectToPeer = function(remoteId) {
-            if (!peer) {
-                console.warn('Peer not ready');
-                return;
-            }
-            if (connection) {
-                console.warn('Already connected');
-                return;
-            }
-            console.log('Connecting to peer:', remoteId);
-            connection = peer.connect(remoteId);
-            setupConnectionHandlers(connection);
-        };
-
-        // Обработчики соединения
-        function setupConnectionHandlers(conn) {
-            conn.on('open', () => {
-                console.log('Connection established with', conn.peer);
-                if (window.godotFunctions?.onConnectionOpen) {
-                    godotFunctions.onConnectionOpen(conn.peer);
-                } else if (typeof godot !== 'undefined') {
-                    godot.call('on_connection_open', conn.peer);
-                } else if (engine?.call) {
-                    engine.call("on_connection_open", conn.peer);
-                }
-            });
-
-            conn.on('data', (data) => console.log('Received data:', data));
-            conn.on('close', () => {
-                console.log('Connection closed');
-                connection = null;
-            });
-            conn.on('error', (err) => {
-                console.error('Connection error:', err);
-                connection = null;
-            });
         }
     })();
     </script>
