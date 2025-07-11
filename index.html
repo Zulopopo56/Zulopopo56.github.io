@@ -1,296 +1,291 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
-		<title>p2p_game_godot</title>
-		<script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-		<style>
-html, body, #canvas {
-	margin: 0;
-	padding: 0;
-	border: 0;
-}
-
-body {
-	color: white;
-	background-color: black;
-	overflow: hidden;
-	touch-action: none;
-}
-
-#canvas {
-	display: block;
-}
-
-#canvas:focus {
-	outline: none;
-}
-
-#status, #status-splash, #status-progress {
-	position: absolute;
-	left: 0;
-	right: 0;
-}
-
-#status, #status-splash {
-	top: 0;
-	bottom: 0;
-}
-
-#status {
-	background-color: #242424;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	visibility: hidden;
-}
-
-#status-splash {
-	max-height: 100%;
-	max-width: 100%;
-	margin: auto;
-}
-
-#status-splash.show-image--false {
-	display: none;
-}
-
-#status-splash.fullsize--true {
-	height: 100%;
-	width: 100%;
-	object-fit: contain;
-}
-
-#status-splash.use-filter--false {
-	image-rendering: pixelated;
-}
-
-#status-progress, #status-notice {
-	display: none;
-}
-
-#status-progress {
-	bottom: 10%;
-	width: 50%;
-	margin: 0 auto;
-}
-
-#status-notice {
-	background-color: #5b3943;
-	border-radius: 0.5rem;
-	border: 1px solid #9b3943;
-	color: #e0e0e0;
-	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
-	line-height: 1.3;
-	margin: 0 2rem;
-	overflow: hidden;
-	padding: 1rem;
-	text-align: center;
-	z-index: 1;
-}
-		</style>
-		<link id="-gd-engine-icon" rel="icon" type="image/png" href="p2p_game_godot.icon.png" />
-<link rel="apple-touch-icon" href="p2p_game_godot.apple-touch-icon.png"/>
-
-	</head>
-	<body>
-		<canvas id="canvas">
-			Your browser does not support the canvas tag.
-		</canvas>
-
-		<noscript>
-			Your browser does not support JavaScript.
-		</noscript>
-
-		<div id="status">
-			<img id="status-splash" class="show-image--true fullsize--true use-filter--true" src="p2p_game_godot.png" alt="">
-			<progress id="status-progress"></progress>
-			<div id="status-notice"></div>
-		</div>
-		<script>
-		function enterFullscreenAndLandscape() {
-			const canvas = document.getElementById('canvas');
-			if (canvas.requestFullscreen) {
-				canvas.requestFullscreen().then(() => {
-					if (screen.orientation && screen.orientation.lock) {
-						screen.orientation.lock('landscape').catch((err) => {
-							console.warn('Orientation lock failed:', err);
-						});
-					}
-				}).catch((err) => {
-					console.warn('Fullscreen request failed:', err);
-				});
-			}
-		}
-		</script>
-		<script src="p2p_game_godot.js"></script>
-		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"p2p_game_godot","experimentalVK":true,"fileSizes":{"p2p_game_godot.pck":35072,"p2p_game_godot.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[]};
-const GODOT_THREADS_ENABLED = false;
-const engine = new Engine(GODOT_CONFIG);
-
-(function () {
-	const statusOverlay = document.getElementById('status');
-	const statusProgress = document.getElementById('status-progress');
-	const statusNotice = document.getElementById('status-notice');
-
-	let initializing = true;
-	let statusMode = '';
-
-	function setStatusMode(mode) {
-		if (statusMode === mode || !initializing) return;
-		if (mode === 'hidden') {
-			statusOverlay.remove();
-			initializing = false;
-			return;
-		}
-		statusOverlay.style.visibility = 'visible';
-		statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
-		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
-		statusMode = mode;
-	}
-
-	function setStatusNotice(text) {
-		statusNotice.innerHTML = '';
-		const lines = text.split('\n');
-		for (const line of lines) {
-			statusNotice.appendChild(document.createTextNode(line));
-			statusNotice.appendChild(document.createElement('br'));
-		}
-	}
-
-	function displayFailureNotice(err) {
-		console.error(err);
-		setStatusNotice(err instanceof Error ? err.message : typeof err === 'string' ? err : 'An unknown error occurred.');
-		setStatusMode('notice');
-		initializing = false;
-	}
-
-	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
-
-	if (missing.length !== 0) {
-		if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
-			let swPromise = navigator.serviceWorker.getRegistration().catch(() => Promise.reject(new Error('Service worker registration failed.')));
-			Promise.race([
-				swPromise.then((reg) => reg ? Promise.reject(new Error('Service worker already exists.')) : reg).then(() => engine.installServiceWorker()),
-				new Promise((resolve) => setTimeout(resolve, 2000))
-			]).then(() => window.location.reload())
-			.catch(err => console.error('Error while registering service worker:', err));
-		} else {
-			displayFailureNotice('Error\nMissing features:\n' + missing.join('\n'));
-		}
-	} else {
-		setStatusMode('progress');
-		engine.startGame({
-			'onProgress': function (current, total) {
-				if (current > 0 && total > 0) {
-					statusProgress.value = current;
-					statusProgress.max = total;
-				} else {
-					statusProgress.removeAttribute('value');
-					statusProgress.removeAttribute('max');
-				}
-			},
-		}).then(() => {
-			setStatusMode('hidden');
-			initPeer(); // ✅ Запуск PeerJS после запуска игры
-		}, displayFailureNotice);
-	}
-
-	// ---- PeerJS ----
-
-	let peer = null;
-	let connection = null;
-
-	function generateShortId() {
-		return Math.random().toString(36).substr(2, 4);
-	}
-
-	function initPeer() {
-		peer = new Peer(generateShortId(), {
-			config: {
-				iceServers: [
-					{ urls: 'stun:stun.l.google.com:19302' },
-					{
-						urls: 'turn:numb.viagenie.ca',
-						username: 'webrtc@live.com',
-						credential: 'muazkh'
-					}
-				]
-			}
-		});
-
-		peer.on('open', (id) => {
-        console.log('PeerJS ID:', id);
-        // Используем правильный метод для Godot 4
-        if (typeof godot !== 'undefined') {
-            godot.set_peer_id(id);
-        } else if (engine && engine.call) {
-            // Для совместимости с разными версиями
-            engine.call("set_peer_id", id);
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+    <title>p2p_game_godot</title>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        /* Ваши существующие стили остаются без изменений */
+        html, body, #canvas {
+            margin: 0;
+            padding: 0;
+            border: 0;
         }
-		});
+        body {
+            color: white;
+            background-color: black;
+            overflow: hidden;
+            touch-action: none;
+        }
+        #canvas {
+            display: block;
+        }
+        #canvas:focus {
+            outline: none;
+        }
+        #status, #status-splash, #status-progress {
+            position: absolute;
+            left: 0;
+            right: 0;
+        }
+        #status, #status-splash {
+            top: 0;
+            bottom: 0;
+        }
+        #status {
+            background-color: #242424;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            visibility: hidden;
+        }
+        #status-splash {
+            max-height: 100%;
+            max-width: 100%;
+            margin: auto;
+        }
+        #status-splash.show-image--false {
+            display: none;
+        }
+        #status-splash.fullsize--true {
+            height: 100%;
+            width: 100%;
+            object-fit: contain;
+        }
+        #status-splash.use-filter--false {
+            image-rendering: pixelated;
+        }
+        #status-progress, #status-notice {
+            display: none;
+        }
+        #status-progress {
+            bottom: 10%;
+            width: 50%;
+            margin: 0 auto;
+        }
+        #status-notice {
+            background-color: #5b3943;
+            border-radius: 0.5rem;
+            border: 1px solid #9b3943;
+            color: #e0e0e0;
+            font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+            line-height: 1.3;
+            margin: 0 2rem;
+            overflow: hidden;
+            padding: 1rem;
+            text-align: center;
+            z-index: 1;
+        }
+    </style>
+    <link id="-gd-engine-icon" rel="icon" type="image/png" href="p2p_game_godot.icon.png" />
+    <link rel="apple-touch-icon" href="p2p_game_godot.apple-touch-icon.png"/>
+</head>
+<body>
+    <canvas id="canvas">
+        Your browser does not support the canvas tag.
+    </canvas>
 
-		peer.on('error', (err) => {
-			console.error('PeerJS ошибка:', err);
-		});
+    <noscript>
+        Your browser does not support JavaScript.
+    </noscript>
 
-		peer.on('connection', (conn) => {
-			if (connection) {
-				console.log('Уже есть соединение, закрываем новое');
-				conn.close();
-				return;
-			}
-			connection = conn;
-			setupConnectionHandlers(conn);
-			console.log('Входящее соединение от', conn.peer);
-		});
-	}
+    <div id="status">
+        <img id="status-splash" class="show-image--true fullsize--true use-filter--true" src="p2p_game_godot.png" alt="">
+        <progress id="status-progress"></progress>
+        <div id="status-notice"></div>
+    </div>
+    
+    <script>
+    function enterFullscreenAndLandscape() {
+        const canvas = document.getElementById('canvas');
+        if (canvas.requestFullscreen) {
+            canvas.requestFullscreen().then(() => {
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch((err) => {
+                        console.warn('Orientation lock failed:', err);
+                    });
+                }
+            }).catch((err) => {
+                console.warn('Fullscreen request failed:', err);
+            });
+        }
+    }
+    </script>
+    
+    <script src="p2p_game_godot.js"></script>
+    
+    <script>
+    const GODOT_CONFIG = {
+        "args": [],
+        "canvasResizePolicy": 2,
+        "ensureCrossOriginIsolationHeaders": true,
+        "executable": "p2p_game_godot",
+        "experimentalVK": true,
+        "fileSizes": {
+            "p2p_game_godot.pck": 35072,
+            "p2p_game_godot.wasm": 52126319
+        },
+        "focusCanvas": true,
+        "gdextensionLibs": []
+    };
+    const GODOT_THREADS_ENABLED = false;
+    const engine = new Engine(GODOT_CONFIG);
 
-	// ✅ Подключение к другому пиру
-	window.connectToPeer = function (remoteId) {
-		if (!peer) {
-			console.warn('Peer не готов');
-			return;
-		}
-		if (connection) {
-			console.warn('Уже подключено');
-			return;
-		}
-		console.log('Подключение к пиру:', remoteId);
-		connection = peer.connect(remoteId);
-		setupConnectionHandlers(connection);
-	};
+    (function() {
+        const statusOverlay = document.getElementById('status');
+        const statusProgress = document.getElementById('status-progress');
+        const statusNotice = document.getElementById('status-notice');
 
-	function setupConnectionHandlers(conn) {
-		conn.on('open', () => {
-			console.log('Соединение установлено с', conn.peer);
-			if (engine && engine.call) {
-				engine.call("on_connection_open", conn.peer); // ✅ Уведомляем Godot
-			}
-		});
+        let initializing = true;
+        let statusMode = '';
 
-		conn.on('data', (data) => {
-			console.log('Получены данные:', data);
-			// Здесь можно вызывать GDScript для обработки
-		});
+        function setStatusMode(mode) {
+            if (statusMode === mode || !initializing) return;
+            if (mode === 'hidden') {
+                statusOverlay.remove();
+                initializing = false;
+                return;
+            }
+            statusOverlay.style.visibility = 'visible';
+            statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
+            statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
+            statusMode = mode;
+        }
 
-		conn.on('close', () => {
-			console.log('Соединение закрыто');
-			connection = null;
-		});
+        function setStatusNotice(text) {
+            statusNotice.innerHTML = '';
+            const lines = text.split('\n');
+            for (const line of lines) {
+                statusNotice.appendChild(document.createTextNode(line));
+                statusNotice.appendChild(document.createElement('br'));
+            }
+        }
 
-		conn.on('error', (err) => {
-			console.error('Ошибка соединения:', err);
-			connection = null;
-		});
-	}
-})();
-</script>
+        function displayFailureNotice(err) {
+            console.error(err);
+            setStatusNotice(err instanceof Error ? err.message : typeof err === 'string' ? err : 'An unknown error occurred.');
+            setStatusMode('notice');
+            initializing = false;
+        }
 
-		</script>
-	</body>
+        const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
+
+        if (missing.length !== 0) {
+            if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
+                let swPromise = navigator.serviceWorker.getRegistration().catch(() => Promise.reject(new Error('Service worker registration failed.')));
+                Promise.race([
+                    swPromise.then((reg) => reg ? Promise.reject(new Error('Service worker already exists.')) : reg).then(() => engine.installServiceWorker()),
+                    new Promise((resolve) => setTimeout(resolve, 2000))
+                ]).then(() => window.location.reload())
+                .catch(err => console.error('Error while registering service worker:', err));
+            } else {
+                displayFailureNotice('Error\nMissing features:\n' + missing.join('\n'));
+            }
+        } else {
+            setStatusMode('progress');
+            engine.startGame({
+                'onProgress': function(current, total) {
+                    if (current > 0 && total > 0) {
+                        statusProgress.value = current;
+                        statusProgress.max = total;
+                    } else {
+                        statusProgress.removeAttribute('value');
+                        statusProgress.removeAttribute('max');
+                    }
+                },
+            }).then(() => {
+                setStatusMode('hidden');
+                initPeer();
+            }, displayFailureNotice);
+        }
+
+        // ---- PeerJS Implementation ----
+        let peer = null;
+        let connection = null;
+
+        function generateShortId() {
+            return Math.random().toString(36).substr(2, 4);
+        }
+
+        function initPeer() {
+            peer = new Peer(generateShortId(), {
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' }
+                    ]
+                }
+            });
+
+            peer.on('open', (id) => {
+                console.log('PeerJS ID:', id);
+                // Совместимость с Godot 4.4
+                if (typeof godot !== 'undefined') {
+                    godot.call('set_peer_id', id);
+                } else if (engine && engine.call) {
+                    engine.call("set_peer_id", id);
+                }
+            });
+
+            peer.on('error', (err) => {
+                console.error('PeerJS error:', err);
+            });
+
+            peer.on('connection', (conn) => {
+                if (connection) {
+                    console.log('Already have connection, closing new one');
+                    conn.close();
+                    return;
+                }
+                connection = conn;
+                setupConnectionHandlers(conn);
+                console.log('Incoming connection from', conn.peer);
+            });
+        }
+
+        window.connectToPeer = function(remoteId) {
+            if (!peer) {
+                console.warn('Peer not ready');
+                return;
+            }
+            if (connection) {
+                console.warn('Already connected');
+                return;
+            }
+            console.log('Connecting to peer:', remoteId);
+            connection = peer.connect(remoteId);
+            setupConnectionHandlers(connection);
+        };
+
+        function setupConnectionHandlers(conn) {
+            conn.on('open', () => {
+                console.log('Connection established with', conn.peer);
+                if (typeof godot !== 'undefined') {
+                    godot.call('on_connection_open', conn.peer);
+                } else if (engine && engine.call) {
+                    engine.call("on_connection_open", conn.peer);
+                }
+            });
+
+            conn.on('data', (data) => {
+                console.log('Received data:', data);
+                // Здесь можно обрабатывать входящие данные
+            });
+
+            conn.on('close', () => {
+                console.log('Connection closed');
+                connection = null;
+            });
+
+            conn.on('error', (err) => {
+                console.error('Connection error:', err);
+                connection = null;
+            });
+        }
+    })();
+    </script>
+</body>
 </html>
-
