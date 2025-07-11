@@ -28,212 +28,65 @@
 
     <script src="p2p_game_godot.js"></script>
     <script>
-    const GODOT_CONFIG = {
-        "args": [],
-        "canvasResizePolicy": 2,
-        "ensureCrossOriginIsolationHeaders": true,
-        "executable": "p2p_game_godot",
-        "experimentalVK": true,
-        "fileSizes": {
-            "p2p_game_godot.pck": 34960,
-            "p2p_game_godot.wasm": 52126319
-        },
-        "focusCanvas": true,
-        "gdextensionLibs": []
-    };
-    const GODOT_THREADS_ENABLED = false;
+	const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"p2p_game_godot","experimentalVK":true,"fileSizes":{"p2p_game_godot.pck":34688,"p2p_game_godot.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[]};
     const engine = new Engine(GODOT_CONFIG);
 
-    // Выносим функции PeerJS в глобальную область видимости
     let peer = null;
     let connection = null;
-    let peerInitialized = false; // Флаг инициализации
 
     function generateShortId() {
         return Math.random().toString(36).substr(2, 4);
     }
 
     function initPeer() {
-    if (window.peer) return; // Защита от повторной инициализации
-    
-    peer = new Peer({
-        config: {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' }
-            ]
-        }
-    });
-
-    peer.on('open', (id) => {
-        console.log('PeerJS ID:', id);
-        if (window.godotFunctions?.setPeerId) {
-            godotFunctions.setPeerId(id);
-        }
-    });
-
-    peer.on('connection', (conn) => {
-        if (connection) conn.close();
-        connection = conn;
-        conn.on('open', () => {
-            console.log('Connected to:', conn.peer);
-            if (window.godotFunctions?.onConnectionOpen) {
-                godotFunctions.onConnectionOpen(conn.peer);
+        peer = new Peer(generateShortId(), {
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ]
             }
         });
-    });
-}
 
+        peer.on('open', (id) => {
+            console.log('PeerJS ID:', id);
+            if (window.godotFunctions?.setPeerId) {
+                window.godotFunctions.setPeerId(id);
+            }
+        });
+
+        peer.on('connection', (conn) => {
+            if (connection) return conn.close();
+            connection = conn;
+            setupConnectionHandlers(conn);
+        });
+
+        peer.on('error', (err) => console.error('PeerJS error:', err));
+    }
 
     function setupConnectionHandlers(conn) {
         conn.on('open', () => {
-            console.log('Connection established with', conn.peer);
+            console.log('Connected to:', conn.peer);
             if (window.godotFunctions?.onConnectionOpen) {
-                godotFunctions.onConnectionOpen(conn.peer);
-            } else if (typeof godot !== 'undefined') {
-                godot.call('on_connection_open', conn.peer);
-            } else if (engine?.call) {
-                engine.call("on_connection_open", conn.peer);
+                window.godotFunctions.onConnectionOpen(conn.peer);
             }
         });
 
-        conn.on('data', (data) => console.log('Received data:', data));
-        conn.on('close', () => {
-            console.log('Connection closed');
-            connection = null;
-        });
-        conn.on('error', (err) => {
-            console.error('Connection error:', err);
-            connection = null;
-        });
+        conn.on('data', (data) => console.log('Received:', data));
+        conn.on('close', () => connection = null);
+        conn.on('error', () => connection = null);
     }
 
     window.connectToPeer = function(remoteId) {
-        if (!peer) {
-            console.warn('Peer not ready');
-            return;
-        }
-        if (connection) {
-            console.warn('Already connected');
-            return;
-        }
-        console.log('Connecting to peer:', remoteId);
+        if (!peer) return console.warn('Peer not ready');
+        if (connection) return console.warn('Already connected');
         connection = peer.connect(remoteId);
         setupConnectionHandlers(connection);
     };
 
-    window.enterFullscreenAndLandscape = function() {
-        const canvas = document.getElementById('canvas');
-        if (canvas.requestFullscreen) {
-            canvas.requestFullscreen().then(() => {
-                if (screen.orientation && screen.orientation.lock) {
-                    screen.orientation.lock('landscape').catch((err) => {
-                        console.warn('Orientation lock failed:', err);
-                    });
-                }
-            }).catch((err) => {
-                console.warn('Fullscreen request failed:', err);
-            });
-        }
-    };
-
-    (function() {
-        // Инициализация статусных элементов
-        const statusOverlay = document.getElementById('status');
-        const statusProgress = document.getElementById('status-progress');
-        const statusNotice = document.getElementById('status-notice');
-        let initializing = true;
-        let statusMode = '';
-
-        // Управление отображением статуса
-        function setStatusMode(mode) {
-            if (statusMode === mode || !initializing) return;
-            if (mode === 'hidden') {
-                statusOverlay.remove();
-                initializing = false;
-                return;
-            }
-            statusOverlay.style.visibility = 'visible';
-            statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
-            statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
-            statusMode = mode;
-        }
-
-        // Отображение уведомлений
-        function setStatusNotice(text) {
-            while (statusNotice.lastChild) {
-                statusNotice.removeChild(statusNotice.lastChild);
-            }
-            const lines = text.split('\n');
-            lines.forEach((line) => {
-                statusNotice.appendChild(document.createTextNode(line));
-                statusNotice.appendChild(document.createElement('br'));
-            });
-        }
-
-        // Обработка ошибок
-        function displayFailureNotice(err) {
-            console.error(err);
-            if (err instanceof Error) {
-                setStatusNotice(err.message);
-            } else if (typeof err === 'string') {
-                setStatusNotice(err);
-            } else {
-                setStatusNotice('An unknown error occurred.');
-            }
-            setStatusMode('notice');
-            initializing = false;
-        }
-
-        // Проверка поддержки функций
-        const missing = Engine.getMissingFeatures({
-            threads: GODOT_THREADS_ENABLED,
-        });
-
-        // Обработка отсутствующих функций
-        if (missing.length !== 0) {
-            if (GODOT_CONFIG['serviceWorker'] && 
-                GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 
-                'serviceWorker' in navigator) {
-                // Попытка установки Service Worker
-                let serviceWorkerRegistrationPromise;
-                try {
-                    serviceWorkerRegistrationPromise = navigator.serviceWorker.getRegistration();
-                } catch (err) {
-                    serviceWorkerRegistrationPromise = Promise.reject(new Error('Service worker registration failed.'));
-                }
-                
-                Promise.race([
-                    serviceWorkerRegistrationPromise.then((registration) => {
-                        if (registration != null) {
-                            return Promise.reject(new Error('Service worker already exists.'));
-                        }
-                        return engine.installServiceWorker();
-                    }),
-                    new Promise((resolve) => setTimeout(resolve, 2000))
-                ]).then(() => window.location.reload())
-                .catch((err) => console.error('Error while registering service worker:', err));
-            } else {
-                displayFailureNotice('Error\nThe following features are missing:\n' + missing.join('\n'));
-            }
-        } else {
-            setStatusMode('progress');
-            engine.startGame({
-                'onProgress': function(current, total) {
-                    if (current > 0 && total > 0) {
-                        statusProgress.value = current;
-                        statusProgress.max = total;
-                    } else {
-                        statusProgress.removeAttribute('value');
-                        statusProgress.removeAttribute('max');
-                    }
-                },
-            }).then(() => {
-                setStatusMode('hidden');
-                // Инициализируем PeerJS после загрузки Godot
-                initPeer();
-            }, displayFailureNotice);
-        }
-    })();
+    engine.startGame({
+        onProgress: (cur, total) => { /* ... */ }
+    }).then(() => setStatusMode('hidden'), displayFailureNotice);
     </script>
 </body>
 </html>
