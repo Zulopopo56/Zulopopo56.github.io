@@ -54,45 +54,35 @@
     }
 
     function initPeer() {
-        // Защита от повторной инициализации
-        if (peerInitialized) return;
-        peerInitialized = true;
-        
-        console.log("Initializing PeerJS...");
-        peer = new Peer(generateShortId(), {
-            config: {
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' }
-                ]
+    if (window.peer) return; // Защита от повторной инициализации
+    
+    peer = new Peer({
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' }
+            ]
+        }
+    });
+
+    peer.on('open', (id) => {
+        console.log('PeerJS ID:', id);
+        if (window.godotFunctions?.setPeerId) {
+            godotFunctions.setPeerId(id);
+        }
+    });
+
+    peer.on('connection', (conn) => {
+        if (connection) conn.close();
+        connection = conn;
+        conn.on('open', () => {
+            console.log('Connected to:', conn.peer);
+            if (window.godotFunctions?.onConnectionOpen) {
+                godotFunctions.onConnectionOpen(conn.peer);
             }
         });
+    });
+}
 
-        peer.on('open', (id) => {
-            console.log('PeerJS ID:', id);
-            if (window.godotFunctions?.setPeerId) {
-                godotFunctions.setPeerId(id);
-            } else if (typeof godot !== 'undefined') {
-                godot.call('set_peer_id', id);
-            } else if (engine?.call) {
-                engine.call("set_peer_id", id);
-            }
-        });
-
-        peer.on('error', (err) => console.error('PeerJS error:', err));
-
-        peer.on('connection', (conn) => {
-            if (connection) {
-                console.log('Already have connection, closing new one');
-                conn.close();
-                return;
-            }
-            connection = conn;
-            setupConnectionHandlers(conn);
-            console.log('Incoming connection from', conn.peer);
-        });
-    }
 
     function setupConnectionHandlers(conn) {
         conn.on('open', () => {
