@@ -108,6 +108,22 @@ body {
 			<progress id="status-progress"></progress>
 			<div id="status-notice"></div>
 		</div>
+		<script>
+		function enterFullscreenAndLandscape() {
+			const canvas = document.getElementById('canvas');
+			if (canvas.requestFullscreen) {
+				canvas.requestFullscreen().then(() => {
+					if (screen.orientation && screen.orientation.lock) {
+						screen.orientation.lock('landscape').catch((err) => {
+							console.warn('Orientation lock failed:', err);
+						});
+					}
+				}).catch((err) => {
+					console.warn('Fullscreen request failed:', err);
+				});
+			}
+		}
+		</script>
 
 		<script src="p2p_game_godot.js"></script>
 		<script>
