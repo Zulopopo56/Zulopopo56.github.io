@@ -222,10 +222,14 @@ const engine = new Engine(GODOT_CONFIG);
 		});
 
 		peer.on('open', (id) => {
-			console.log('PeerJS ID:', id);
-			if (engine && engine.call) {
-				engine.call("set_peer_id", id); // Передаём ID в GDScript
-			}
+        console.log('PeerJS ID:', id);
+        // Используем правильный метод для Godot 4
+        if (typeof godot !== 'undefined') {
+            godot.set_peer_id(id);
+        } else if (engine && engine.call) {
+            // Для совместимости с разными версиями
+            engine.call("set_peer_id", id);
+        }
 		});
 
 		peer.on('error', (err) => {
