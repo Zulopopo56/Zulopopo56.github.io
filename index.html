@@ -28,19 +28,37 @@
 
     <script src="p2p_game_godot.js"></script>
     <script>
-	const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"p2p_game_godot","experimentalVK":true,"fileSizes":{"p2p_game_godot.pck":34928,"p2p_game_godot.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[]};
-	const GODOT_THREADS_ENABLED = false;
+    const GODOT_CONFIG = {
+        "args": [],
+        "canvasResizePolicy": 2,
+        "ensureCrossOriginIsolationHeaders": true,
+        "executable": "p2p_game_godot",
+        "experimentalVK": true,
+        "fileSizes": {
+            "p2p_game_godot.pck": 34960,
+            "p2p_game_godot.wasm": 52126319
+        },
+        "focusCanvas": true,
+        "gdextensionLibs": []
+    };
+    const GODOT_THREADS_ENABLED = false;
     const engine = new Engine(GODOT_CONFIG);
 
     // Выносим функции PeerJS в глобальную область видимости
     let peer = null;
     let connection = null;
+    let peerInitialized = false; // Флаг инициализации
 
     function generateShortId() {
         return Math.random().toString(36).substr(2, 4);
     }
 
     function initPeer() {
+        // Защита от повторной инициализации
+        if (peerInitialized) return;
+        peerInitialized = true;
+        
+        console.log("Initializing PeerJS...");
         peer = new Peer(generateShortId(), {
             config: {
                 iceServers: [
@@ -111,6 +129,21 @@
         console.log('Connecting to peer:', remoteId);
         connection = peer.connect(remoteId);
         setupConnectionHandlers(connection);
+    };
+
+    window.enterFullscreenAndLandscape = function() {
+        const canvas = document.getElementById('canvas');
+        if (canvas.requestFullscreen) {
+            canvas.requestFullscreen().then(() => {
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch((err) => {
+                        console.warn('Orientation lock failed:', err);
+                    });
+                }
+            }).catch((err) => {
+                console.warn('Fullscreen request failed:', err);
+            });
+        }
     };
 
     (function() {
