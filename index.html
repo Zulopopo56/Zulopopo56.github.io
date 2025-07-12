@@ -94,6 +94,60 @@ body {
 <link rel="apple-touch-icon" href="p2p_game_godot.apple-touch-icon.png"/>
 <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 <script>
+		let peer = null;
+    	let connection = null;
+		let myPeerId = null;
+    	function generateShortId() {
+        	return Math.random().toString(36).substr(2, 4);
+    	}
+
+    	function initPeer() {
+        	peer = new Peer(generateShortId(), {
+            	config: {
+                	iceServers: [
+                    	{ urls: 'stun:stun.l.google.com:19302' },
+                    	{ urls: 'stun:stun1.l.google.com:19302' },
+						{
+						urls: 'turn:numb.viagenie.ca',
+						username: 'webrtc@live.com',
+						credential: 'muazkh'
+						}
+                	]
+            	}
+        	});
+
+        	peer.on('open', (id) => {
+            	console.log('PeerJS ID:', id);
+				myPeerId = id;
+        	});
+
+        peer.on('connection', (conn) => {
+            if (connection) return conn.close();
+            connection = conn;
+            setupConnectionHandlers(conn);
+        });
+
+        peer.on('error', (err) => console.error('PeerJS error:', err));
+    }
+
+    function setupConnectionHandlers(conn) {
+        conn.on('open', () => {
+            console.log('Connected to:', conn.peer);
+        });
+
+        conn.on('data', (data) => console.log('Received:', data));
+        conn.on('close', () => connection = null);
+        conn.on('error', () => connection = null);
+    }
+
+    window.connectToPeer = function(remoteId) {
+        if (!peer) return console.warn('Peer not ready');
+        if (connection) return console.warn('Already connected');
+        connection = peer.connect(remoteId);
+        setupConnectionHandlers(connection);
+    };
+</script>
+<script>
 function enterFullscreenAndLandscape() {
     const canvas = document.getElementById('canvas');
     if (canvas.requestFullscreen) {
@@ -127,7 +181,7 @@ function enterFullscreenAndLandscape() {
 
 		<script src="p2p_game_godot.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"p2p_game_godot","experimentalVK":true,"fileSizes":{"p2p_game_godot.pck":34512,"p2p_game_godot.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[]};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"p2p_game_godot","experimentalVK":true,"fileSizes":{"p2p_game_godot.pck":63280,"p2p_game_godot.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[]};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
