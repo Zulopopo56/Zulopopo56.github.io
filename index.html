@@ -146,9 +146,46 @@ body {
         connection = peer.connect(remoteId);
         setupConnectionHandlers(connection);
     };
-    initPeer();
+	function getId(){
+        if (myPeerId) {
+            return myPeerId;
+        } else {
+            console.warn('Peer ID not available yet');
+            return null;
+        }
+    }
+	initPeer();
 </script>
 <script>
+// Универсальная функция для всех платформ
+function toggleFullscreen() {
+    // Проверяем, мобильное ли это устройство
+    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        // Вызываем вашу существующую функцию для мобильных
+        enterFullscreenAndLandscape();
+    } else {
+        // Реализация для компьютеров
+        const canvas = document.getElementById('canvas');
+        
+        if (!document.fullscreenElement) {
+            // Вход в полноэкранный режим
+            canvas.requestFullscreen().catch(err => {
+                console.error('Fullscreen error:', err);
+                // Альтернатива для старых браузеров
+                if (canvas.webkitRequestFullscreen) { /* Safari */
+                    canvas.webkitRequestFullscreen();
+                } else if (canvas.msRequestFullscreen) { /* IE11 */
+                    canvas.msRequestFullscreen();
+                }
+            });
+        } else {
+            // Выход из полноэкранного режима
+            document.exitFullscreen();
+        }
+    }
+}
+
+// Ваша существующая функция для мобильных (оставляем без изменений)
 function enterFullscreenAndLandscape() {
     const canvas = document.getElementById('canvas');
     if (canvas.requestFullscreen) {
@@ -182,7 +219,7 @@ function enterFullscreenAndLandscape() {
 
 		<script src="p2p_game_godot.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"p2p_game_godot","experimentalVK":true,"fileSizes":{"p2p_game_godot.pck":63280,"p2p_game_godot.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[]};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"p2p_game_godot","experimentalVK":true,"fileSizes":{"p2p_game_godot.pck":63248,"p2p_game_godot.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[]};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
