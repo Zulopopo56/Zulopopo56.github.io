@@ -133,6 +133,7 @@ body {
     function setupConnectionHandlers(conn) {
         conn.on('open', () => {
             console.log('Connected to:', conn.peer);
+            window.godotCall(state_change, 'Connected to:', conn.peer);
         });
 
         conn.on('data', (data) => console.log('Received:', data));
@@ -157,47 +158,24 @@ body {
 	initPeer();
 </script>
 <script>
-// Универсальная функция для всех платформ
 function toggleFullscreen() {
-    // Проверяем, мобильное ли это устройство
-    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-        // Вызываем вашу существующую функцию для мобильных
-        enterFullscreenAndLandscape();
-    } else {
-        // Реализация для компьютеров
-        const canvas = document.getElementById('canvas');
-        
-        if (!document.fullscreenElement) {
-            // Вход в полноэкранный режим
-            canvas.requestFullscreen().catch(err => {
-                console.error('Fullscreen error:', err);
-                // Альтернатива для старых браузеров
-                if (canvas.webkitRequestFullscreen) { /* Safari */
-                    canvas.webkitRequestFullscreen();
-                } else if (canvas.msRequestFullscreen) { /* IE11 */
-                    canvas.msRequestFullscreen();
-                }
-            });
-        } else {
-            // Выход из полноэкранного режима
+    const canvas = document.getElementById('canvas');
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+        if (document.exitFullscreen) {
             document.exitFullscreen();
+        } 
+        else if (document.webkitExitFullscreen) { /* Safari */
+            document.webkitExitFullscreen();
         }
     }
-}
-
-// Ваша существующая функция для мобильных (оставляем без изменений)
-function enterFullscreenAndLandscape() {
-    const canvas = document.getElementById('canvas');
-    if (canvas.requestFullscreen) {
-        canvas.requestFullscreen().then(() => {
+    else {
+        canvas.requestFullscreen()
+        canvas.webkitRequestFullscreen()
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
             if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock('landscape').catch((err) => {
-                    console.warn('Orientation lock failed:', err);
-                });
-            }
-        }).catch((err) => {
-            console.warn('Fullscreen request failed:', err);
-        });
+                screen.orientation.lock('landscape');
+            }   
+        }
     }
 }
 </script>
