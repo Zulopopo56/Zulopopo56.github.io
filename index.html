@@ -216,8 +216,6 @@ const engine = new Engine(GODOT_CONFIG);
 	} else {
 		setStatusMode('progress');
 		engine.startGame({
-            onPrint: function(text) { console.log(text); },  // Должно быть!
-            onPrintError: function(text) { console.error(text); },
 			'onProgress': function (current, total) {
 				if (current > 0 && total > 0) {
 					statusProgress.value = current;
