@@ -127,13 +127,15 @@ body {
             setupConnectionHandlers(conn);
         });
 
-        peer.on('error', (err) => console.error('PeerJS error:', err));
-    }
-
+        peer.on('error', (err) => {
+            console.error('PeerJS error:', err);
+			godotBridge.test('ERROR');
+        });
+}
     function setupConnectionHandlers(conn) {
         conn.on('open', () => {
             console.log('Connected to:', conn.peer);
-            window.godotCall(state_change, 'Connected to:', conn.peer);
+			godotBridge.test('Connected to:', conn.peer);
         });
 
         conn.on('data', (data) => console.log('Received:', data));
