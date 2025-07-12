@@ -4,6 +4,7 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
 		<title>p2p_game_godot</title>
+		<script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 		<style>
 html, body, #canvas {
 	margin: 0;
@@ -108,7 +109,63 @@ body {
 			<progress id="status-progress"></progress>
 			<div id="status-notice"></div>
 		</div>
+		<script>
+		let peer = null;
+    	let connection = null;
+		let myPeerId = null;
+    	function generateShortId() {
+        	return Math.random().toString(36).substr(2, 4);
+    	}
 
+    	function initPeer() {
+        	peer = new Peer(generateShortId(), {
+            	config: {
+                	iceServers: [
+                    	{ urls: 'stun:stun.l.google.com:19302' },
+                    	{ urls: 'stun:stun1.l.google.com:19302' },
+						{
+						urls: 'turn:numb.viagenie.ca',
+						username: 'webrtc@live.com',
+						credential: 'muazkh'
+						}
+                	]
+            	}
+        	});
+
+        	peer.on('open', (id) => {
+            	console.log('PeerJS ID:', id);
+				myPeerId = id;
+        	});
+
+        peer.on('connection', (conn) => {
+            if (connection) return conn.close();
+            connection = conn;
+            setupConnectionHandlers(conn);
+        });
+
+        peer.on('error', (err) => console.error('PeerJS error:', err));
+    }
+
+    function setupConnectionHandlers(conn) {
+        conn.on('open', () => {
+            console.log('Connected to:', conn.peer);
+            if (window.godotFunctions?.onConnectionOpen) {
+                window.godotFunctions.onConnectionOpen(conn.peer);
+            }
+        });
+
+        conn.on('data', (data) => console.log('Received:', data));
+        conn.on('close', () => connection = null);
+        conn.on('error', () => connection = null);
+    }
+
+    window.connectToPeer = function(remoteId) {
+        if (!peer) return console.warn('Peer not ready');
+        if (connection) return console.warn('Already connected');
+        connection = peer.connect(remoteId);
+        setupConnectionHandlers(connection);
+    };
+</script>
 		<script src="p2p_game_godot.js"></script>
 		<script>
 const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"p2p_game_godot","experimentalVK":true,"fileSizes":{"p2p_game_godot.pck":34688,"p2p_game_godot.wasm":52126319},"focusCanvas":true,"gdextensionLibs":[]};
